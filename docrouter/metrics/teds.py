@@ -176,12 +176,72 @@ def teds(
     return max(0.0, 1.0 - distance / n)
 
 
+def _flatten(rows: list[list[str]]) -> str:
+    """Cheap text signature of a table, for candidate matching."""
+    return " ".join(" ".join(r) for r in rows).lower()
+
+
+def _match_tables(
+    pred_tables: list[list[list[str]]],
+    gold_tables: list[list[list[str]]],
+) -> list[int | None]:
+    """Greedily pair predicted tables to gold tables by text similarity.
+
+    Matching directly on TEDS would need |pred| x |gold| tree edit distances.
+    On a real filing with ~20 tables that is 400 APTED runs and takes minutes.
+    Instead, pair on a cheap text proxy and spend exact TEDS only on the pairs
+    that actually matched: O(n) tree comparisons instead of O(n^2).
+
+    The proxy only decides *which* prediction corresponds to which ground-truth
+    table. The score itself is still exact TEDS, so this is a search
+    optimization, not an approximation of the metric.
+    """
+    if not pred_tables:
+        return [None] * len(gold_tables)
+
+    pred_sigs = [_flatten(t) for t in pred_tables]
+    gold_sigs = [_flatten(t) for t in gold_tables]
+
+    try:
+        from rapidfuzz import process as _process
+        from rapidfuzz.distance import Levenshtein as _L
+
+        matrix = _process.cdist(
+            gold_sigs, pred_sigs, scorer=_L.normalized_similarity, workers=-1
+        )
+        sim = [[float(matrix[g][p]) for p in range(len(pred_sigs))]
+               for g in range(len(gold_sigs))]
+    except ImportError:  # pragma: no cover
+        from .text import normalized_edit_distance
+
+        sim = [
+            [1.0 - normalized_edit_distance(g, p) for p in pred_sigs]
+            for g in gold_sigs
+        ]
+
+    # Global greedy: take the best available pair overall, then the next best.
+    # Row-by-row greedy would let an early gold table claim a prediction that
+    # matches a later one far better.
+    pairs = sorted(
+        ((sim[g][p], g, p) for g in range(len(gold_sigs))
+         for p in range(len(pred_sigs))),
+        reverse=True,
+    )
+    assignment: list[int | None] = [None] * len(gold_sigs)
+    used_pred: set[int] = set()
+    for _, g, p in pairs:
+        if assignment[g] is None and p not in used_pred:
+            assignment[g] = p
+            used_pred.add(p)
+    return assignment
+
+
 def teds_from_markdown(
     pred_md: str,
     gold_md: str,
     structure_only: bool = False,
 ) -> float:
-    """Document-level TEDS: mean over greedily matched table pairs.
+    """Document-level TEDS: mean over matched table pairs.
 
     Missing tables score 0 and spurious tables drag the mean down, so a backend
     cannot win by simply not emitting tables it is unsure about.
@@ -191,18 +251,54 @@ def teds_from_markdown(
     if not gold_tables:
         return 1.0 if not pred_tables else 0.0
 
+    assignment = _match_tables(pred_tables, gold_tables)
+
     scores: list[float] = []
-    remaining = [rows_to_tree(t) for t in pred_tables]
-    for gold_rows in gold_tables:
-        gold_tree = rows_to_tree(gold_rows)
-        if not remaining:
+    for gi, gold_rows in enumerate(gold_tables):
+        pi = assignment[gi]
+        if pi is None:
             scores.append(0.0)
             continue
-        pairwise = [teds(p, gold_tree, structure_only) for p in remaining]
-        best = max(range(len(pairwise)), key=lambda i: pairwise[i])
-        scores.append(pairwise[best])
-        remaining.pop(best)
+        scores.append(
+            teds(rows_to_tree(pred_tables[pi]), rows_to_tree(gold_rows), structure_only)
+        )
 
     # Spurious extra tables are penalized as zero-scoring predictions.
-    scores.extend([0.0] * len(remaining))
+    n_unmatched = len(pred_tables) - sum(1 for a in assignment if a is not None)
+    scores.extend([0.0] * n_unmatched)
     return sum(scores) / len(scores)
+
+
+def teds_both_from_markdown(pred_md: str, gold_md: str) -> tuple[float, float]:
+    """Return (TEDS, TEDS-S) sharing one extraction and one table matching.
+
+    Calling `teds_from_markdown` twice re-extracts and re-matches every table
+    for a result that is identical either way. On a 20-table filing that is
+    half the metric's total cost thrown away.
+    """
+    pred_tables = extract_markdown_tables(pred_md)
+    gold_tables = extract_markdown_tables(gold_md)
+    if not gold_tables:
+        v = 1.0 if not pred_tables else 0.0
+        return v, v
+
+    assignment = _match_tables(pred_tables, gold_tables)
+
+    full: list[float] = []
+    struct: list[float] = []
+    for gi, gold_rows in enumerate(gold_tables):
+        pi = assignment[gi]
+        if pi is None:
+            full.append(0.0)
+            struct.append(0.0)
+            continue
+        # Build each tree once and score it under both cost functions.
+        pred_tree = rows_to_tree(pred_tables[pi])
+        gold_tree = rows_to_tree(gold_rows)
+        full.append(teds(pred_tree, gold_tree, structure_only=False))
+        struct.append(teds(pred_tree, gold_tree, structure_only=True))
+
+    n_unmatched = len(pred_tables) - sum(1 for a in assignment if a is not None)
+    full.extend([0.0] * n_unmatched)
+    struct.extend([0.0] * n_unmatched)
+    return sum(full) / len(full), sum(struct) / len(struct)

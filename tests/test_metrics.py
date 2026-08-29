@@ -120,3 +120,53 @@ class TestComposite:
         score = score_document("", GOLD_TABLE, "d1", "b1", failed=True)
         assert score.overall == 0.0
         assert score.failed
+
+
+class TestPerformanceContracts:
+    """These pin scaling behavior, not just correctness.
+
+    The original pure-Python metrics were correct and unusably slow: a 130 KB
+    filing took roughly an hour per comparison. Correct-but-quadratic is a real
+    failure mode for a benchmark harness, so it gets tests.
+    """
+
+    @staticmethod
+    def _doc(n_sentences: int) -> str:
+        words = "revenue segment quarter increased across reportable segments".split()
+        return " ".join(
+            " ".join(words[i % len(words)] for i in range(s, s + 12)) + "."
+            for s in range(n_sentences)
+        )
+
+    def test_large_document_scores_quickly(self):
+        import time
+
+        from docrouter.metrics.text import reading_order_score, text_similarity
+
+        doc = self._doc(800)
+        assert len(doc) > 50_000
+
+        start = time.perf_counter()
+        text_similarity(doc, doc)
+        reading_order_score(doc, doc)
+        elapsed = time.perf_counter() - start
+        assert elapsed < 20, f"metrics took {elapsed:.1f}s on a {len(doc)//1024}KB doc"
+
+    def test_teds_variants_share_work(self):
+        # teds_both must agree with computing each separately.
+        from docrouter.metrics.teds import teds_both_from_markdown, teds_from_markdown
+
+        both = teds_both_from_markdown(GOLD_TABLE, GOLD_TABLE)
+        separate = (
+            teds_from_markdown(GOLD_TABLE, GOLD_TABLE),
+            teds_from_markdown(GOLD_TABLE, GOLD_TABLE, structure_only=True),
+        )
+        assert both == pytest.approx(separate)
+
+    def test_table_matching_is_content_based(self):
+        # Two tables in swapped order must still pair with their counterparts.
+        from docrouter.metrics.teds import teds_from_markdown
+
+        t1 = "| A | B |\n| --- | --- |\n| 1 | 2 |"
+        t2 = "| X | Y |\n| --- | --- |\n| 9 | 8 |"
+        assert teds_from_markdown(f"{t2}\n\n{t1}", f"{t1}\n\n{t2}") == pytest.approx(1.0)

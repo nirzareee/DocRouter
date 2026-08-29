@@ -22,7 +22,8 @@ import sys
 from pathlib import Path
 
 # Running `python scripts/build_corpus.py` puts scripts/ on sys.path, not the
-# repo root, so `import docrouter` fails. Add the project root explicitly.
+# repo root, so `import docrouter` fails. Add the project root explicitly so
+# the script works whether invoked directly or as `python -m scripts.build_corpus`.
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from docrouter.edgar.html_to_gold import convert_file

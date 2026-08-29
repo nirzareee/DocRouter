@@ -5,13 +5,18 @@ from __future__ import annotations
 from dataclasses import dataclass, asdict
 from typing import Any
 
-from .teds import teds_from_markdown, extract_markdown_tables
+from .teds import (
+    teds_from_markdown,
+    teds_both_from_markdown,
+    extract_markdown_tables,
+)
 from .text import text_similarity, reading_order_score, normalized_edit_distance
 
 __all__ = [
     "DocumentScore",
     "score_document",
     "teds_from_markdown",
+    "teds_both_from_markdown",
     "text_similarity",
     "reading_order_score",
     "normalized_edit_distance",
@@ -89,12 +94,14 @@ def score_document(
             failed=True,
         )
 
+    teds_full, teds_s = teds_both_from_markdown(pred_markdown, gold_markdown)
+
     return DocumentScore(
         doc_id=doc_id,
         backend=backend,
         text_sim=text_similarity(pred_markdown, gold_markdown),
-        teds=teds_from_markdown(pred_markdown, gold_markdown),
-        teds_struct=teds_from_markdown(pred_markdown, gold_markdown, structure_only=True),
+        teds=teds_full,
+        teds_struct=teds_s,
         reading_order=reading_order_score(pred_markdown, gold_markdown),
         n_tables_pred=len(extract_markdown_tables(pred_markdown)),
         n_tables_gold=len(gold_tables),

@@ -152,14 +152,17 @@ def html_to_gold(html_text: str | bytes) -> GoldDocument:
     already-decoded string. Passing bytes lets lxml honor the declaration.
     """
     if isinstance(html_text, str):
+        # Strip a leading XML declaration rather than re-encoding blindly, so
+        # a str caller still works.
         html_text = re.sub(r"^\s*<\?xml[^>]*\?>", "", html_text, count=1)
         html_text = html_text.encode("utf-8")
 
     tree = lxml_html.fromstring(html_text)
 
     # iXBRL filings wrap machine-readable facts in ix: elements. The header
-    # block holds hidden tagged values that never render in the PDF, so
-    # including them would create ground truth for invisible text.
+    # block holds hidden tagged values that are not part of the visible
+    # document, so including them would create ground truth for text that never
+    # appears in the rendered PDF.
     for xpath, ns in (
         ("//script | //style", None),
         ("//ix:header", {"ix": "http://www.xbrl.org/2013/inlineXBRL"}),

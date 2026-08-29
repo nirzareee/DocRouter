@@ -87,3 +87,35 @@ class TestEndToEnd:
         score = score_document(gold, gold, "d", "b")
         assert score.overall == 1.0
         assert score.has_gold_tables
+
+
+class TestRealFilingQuirks:
+    """Regressions from actual EDGAR filings, not synthetic HTML."""
+
+    IXBRL = (
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<html xmlns:ix="http://www.xbrl.org/2013/inlineXBRL"><body>'
+        "<ix:header><ix:hidden>tagged fact junk</ix:hidden></ix:header>"
+        "<h2>Item 2. Discussion</h2>"
+        "<p>Revenue increased across three of four reportable segments.</p>"
+        "<table><tr><th>Segment</th><th>2026</th></tr>"
+        "<tr><td>Americas</td><td>1,284</td></tr>"
+        "<tr><td>Europe</td><td>952</td></tr></table>"
+        "</body></html>"
+    )
+
+    def test_xml_declaration_does_not_crash(self):
+        # lxml rejects str input carrying an encoding declaration; modern
+        # filings are inline XBRL and always have one.
+        gold = html_to_gold(self.IXBRL)
+        assert gold.n_tables == 1
+
+    def test_bytes_input_works(self):
+        gold = html_to_gold(self.IXBRL.encode("utf-8"))
+        assert gold.n_tables == 1
+
+    def test_xbrl_hidden_header_excluded(self):
+        # Hidden tagged facts never render in the PDF, so they must not appear
+        # in ground truth.
+        gold = html_to_gold(self.IXBRL)
+        assert "junk" not in gold.markdown

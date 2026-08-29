@@ -32,6 +32,35 @@ def strip_markdown(text: str) -> str:
     return text
 
 
+# Levenshtein is O(n*m). A pure-Python implementation is fine for the unit
+# tests and hopeless for real documents: a 130 KB filing takes roughly an hour
+# per comparison. rapidfuzz is the same algorithm in C++, ~1000x faster. The
+# fallback keeps the package importable without it, but a benchmark run of any
+# size needs rapidfuzz installed.
+try:
+    from rapidfuzz.distance import Levenshtein as _Lev
+
+    def _ned(a: str, b: str) -> float:
+        return _Lev.normalized_distance(a, b)
+
+    HAVE_RAPIDFUZZ = True
+except ImportError:  # pragma: no cover
+    HAVE_RAPIDFUZZ = False
+
+    def _ned(a: str, b: str) -> float:
+        if len(a) < len(b):
+            a, b = b, a
+        prev = list(range(len(b) + 1))
+        for i, ca in enumerate(a, 1):
+            curr = [i]
+            for j, cb in enumerate(b, 1):
+                curr.append(
+                    min(prev[j] + 1, curr[j - 1] + 1, prev[j - 1] + (ca != cb))
+                )
+            prev = curr
+        return prev[-1] / max(len(a), len(b))
+
+
 def normalized_edit_distance(a: str, b: str) -> float:
     """Character-level Levenshtein scaled to [0, 1]. Lower is better."""
     a, b = normalize(a), normalize(b)
@@ -39,15 +68,7 @@ def normalized_edit_distance(a: str, b: str) -> float:
         return 0.0
     if not a or not b:
         return 1.0
-    if len(a) < len(b):
-        a, b = b, a
-    prev = list(range(len(b) + 1))
-    for i, ca in enumerate(a, 1):
-        curr = [i]
-        for j, cb in enumerate(b, 1):
-            curr.append(min(prev[j] + 1, curr[j - 1] + 1, prev[j - 1] + (ca != cb)))
-        prev = curr
-    return prev[-1] / max(len(a), len(b))
+    return _ned(a, b)
 
 
 def text_similarity(pred: str, gold: str) -> float:
@@ -94,19 +115,42 @@ def reading_order_score(pred: str, gold: str, threshold: float = 0.7) -> float:
     if len(gold_blocks) < 2:
         return 1.0
 
+    # Matching is |pred| x |gold| comparisons. On a real filing that is tens of
+    # thousands of string distances, so use rapidfuzz's vectorized cdist when
+    # available and fall back to the explicit loop otherwise.
     sequence: list[int] = []
     used: set[int] = set()
-    for pb in pred_blocks:
-        best_idx, best_score = -1, threshold
-        for gi, gb in enumerate(gold_blocks):
-            if gi in used:
-                continue
-            score = _similar(pb, gb)
-            if score > best_score:
-                best_idx, best_score = gi, score
-        if best_idx >= 0:
-            sequence.append(best_idx)
-            used.add(best_idx)
+
+    if HAVE_RAPIDFUZZ and pred_blocks:
+        from rapidfuzz import process as _process
+        from rapidfuzz.distance import Levenshtein as _L
+
+        matrix = _process.cdist(
+            pred_blocks, gold_blocks, scorer=_L.normalized_similarity, workers=-1
+        )
+        for pi in range(len(pred_blocks)):
+            row = matrix[pi]
+            best_idx, best_score = -1, threshold
+            for gi in range(len(gold_blocks)):
+                if gi in used:
+                    continue
+                if row[gi] > best_score:
+                    best_idx, best_score = gi, float(row[gi])
+            if best_idx >= 0:
+                sequence.append(best_idx)
+                used.add(best_idx)
+    else:
+        for pb in pred_blocks:
+            best_idx, best_score = -1, threshold
+            for gi, gb in enumerate(gold_blocks):
+                if gi in used:
+                    continue
+                score = _similar(pb, gb)
+                if score > best_score:
+                    best_idx, best_score = gi, score
+            if best_idx >= 0:
+                sequence.append(best_idx)
+                used.add(best_idx)
 
     if len(sequence) < 2:
         return 0.0 if gold_blocks else 1.0
