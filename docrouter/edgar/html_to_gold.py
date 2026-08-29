@@ -143,16 +143,35 @@ def _looks_like_heading(text: str) -> bool:
     return bool(letters) and sum(c.isupper() for c in letters) / len(letters) > 0.8
 
 
-def html_to_gold(html_text: str) -> GoldDocument:
-    """Convert filing HTML into markdown ground truth."""
+def html_to_gold(html_text: str | bytes) -> GoldDocument:
+    """Convert filing HTML into markdown ground truth.
+
+    Accepts bytes or str. Modern EDGAR filings are inline XBRL: XHTML carrying
+    an `<?xml ... encoding="..."?>` declaration. lxml refuses to parse those
+    from a str, because the declaration's encoding would contradict Python's
+    already-decoded string. Passing bytes lets lxml honor the declaration.
+    """
+    if isinstance(html_text, str):
+        html_text = re.sub(r"^\s*<\?xml[^>]*\?>", "", html_text, count=1)
+        html_text = html_text.encode("utf-8")
+
     tree = lxml_html.fromstring(html_text)
 
-    for bad in tree.xpath("//script | //style | //ix:header", namespaces={
-        "ix": "http://www.xbrl.org/2013/inlineXBRL"
-    }):
-        parent = bad.getparent()
-        if parent is not None:
-            parent.remove(bad)
+    # iXBRL filings wrap machine-readable facts in ix: elements. The header
+    # block holds hidden tagged values that never render in the PDF, so
+    # including them would create ground truth for invisible text.
+    for xpath, ns in (
+        ("//script | //style", None),
+        ("//ix:header", {"ix": "http://www.xbrl.org/2013/inlineXBRL"}),
+    ):
+        try:
+            found = tree.xpath(xpath, namespaces=ns) if ns else tree.xpath(xpath)
+        except Exception:  # noqa: BLE001 - namespace absent in non-XBRL filings
+            continue
+        for bad in found:
+            parent = bad.getparent()
+            if parent is not None:
+                parent.remove(bad)
 
     body = tree.find(".//body")
     root = body if body is not None else tree
@@ -208,7 +227,9 @@ def html_to_gold(html_text: str) -> GoldDocument:
 
 
 def convert_file(html_path: Path, out_path: Path) -> GoldDocument:
-    gold = html_to_gold(html_path.read_text(encoding="utf-8", errors="replace"))
+    # Read bytes, not text: filings declare their own encoding and lxml must
+    # be allowed to honor it.
+    gold = html_to_gold(html_path.read_bytes())
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(gold.markdown, encoding="utf-8")
     return gold

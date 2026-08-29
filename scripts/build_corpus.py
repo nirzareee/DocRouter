@@ -18,7 +18,12 @@ from __future__ import annotations
 import argparse
 import json
 import shutil
+import sys
 from pathlib import Path
+
+# Running `python scripts/build_corpus.py` puts scripts/ on sys.path, not the
+# repo root, so `import docrouter` fails. Add the project root explicitly.
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from docrouter.edgar.html_to_gold import convert_file
 
