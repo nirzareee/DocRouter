@@ -12,3 +12,7 @@ pytest>=8.0
 # docling>=2.0
 # marker-pdf>=1.0
 # magic-pdf[full]        # MinerU, needs a GPU
+numpy>=1.26
+pillow>=10.0
+requests>=2.31
+playwright>=1.40
