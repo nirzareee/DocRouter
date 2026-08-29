@@ -1,0 +1,11 @@
+[project]
+name = "docrouter"
+version = "0.1.0"
+description = "Cost-aware document extraction routing with a reproducible benchmark"
+requires-python = ">=3.10"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.setuptools.packages.find]
+include = ["docrouter*"]

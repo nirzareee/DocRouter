@@ -1,0 +1,2 @@
+{"doc_key": "0001_table", "columns": 1, "scanned": false, "table_density": "high", "source": "synthetic"}
+{"doc_key": "0002_twocol", "columns": 2, "scanned": false, "table_density": "none", "source": "synthetic"}
