@@ -1,8 +1,13 @@
 __pycache__/
 *.pyc
 .venv/
-results/*.jsonl
-data/*/docs/
-data/*/gold/
-.DS_Store
 .pytest_cache/
+.DS_Store
+
+# Binary inputs are regenerable from sources.jsonl + build_corpus.py.
+data/*/docs/*.pdf
+data/*/docs/*.docx
+data/edgar/html/
+
+# Ground truth and results ARE tracked: gold markdown is hand-verified
+# annotation, and the JSONL is the evidence behind every claim in findings.md.
