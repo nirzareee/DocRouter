@@ -4,3 +4,5 @@ __pycache__/
 results/*.jsonl
 data/*/docs/
 data/*/gold/
+.DS_Store
+.pytest_cache/
