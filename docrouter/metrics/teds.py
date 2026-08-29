@@ -140,8 +140,15 @@ _MD_ROW = re.compile(r"^\s*\|.*\|\s*$")
 _MD_SEP = re.compile(r"^\s*\|[\s:|-]+\|\s*$")
 
 
-def extract_markdown_tables(markdown: str) -> list[list[list[str]]]:
-    """Pull every GFM pipe table out of a markdown document as row matrices."""
+def extract_markdown_tables(
+    markdown: str, canonical: bool = True
+) -> list[list[list[str]]]:
+    """Pull every GFM pipe table out of a markdown document as row matrices.
+
+    Canonicalized by default. Predictions and ground truth must go through the
+    same normalization or the metric scores house style rather than extraction
+    quality. Pass canonical=False to inspect raw structure.
+    """
     tables: list[list[list[str]]] = []
     current: list[list[str]] = []
     for line in markdown.splitlines():
@@ -156,6 +163,11 @@ def extract_markdown_tables(markdown: str) -> list[list[list[str]]]:
             current = []
     if len(current) >= 2:
         tables.append(current)
+
+    if canonical:
+        from .canonical import canonicalize
+
+        tables = [c for t in tables if (c := canonicalize(t))]
     return tables
 
 

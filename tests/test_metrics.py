@@ -170,3 +170,57 @@ class TestPerformanceContracts:
         t1 = "| A | B |\n| --- | --- |\n| 1 | 2 |"
         t2 = "| X | Y |\n| --- | --- |\n| 9 | 8 |"
         assert teds_from_markdown(f"{t2}\n\n{t1}", f"{t1}\n\n{t2}") == pytest.approx(1.0)
+
+
+class TestCanonicalization:
+    """Predictions and gold are normalized identically before scoring.
+
+    Filings put '$' in its own column. The gold generator merges it; pdfplumber
+    does not. Scored raw, a backend that extracted every number correctly lost
+    ~0.4 TEDS purely on that convention difference, which means the benchmark
+    was ranking house style rather than extraction quality.
+
+    Canonicalization must remove that penalty WITHOUT hiding real errors.
+    """
+
+    GOLD = (
+        "| | Q3 | Q2 |\n| --- | --- | --- |\n"
+        "| Products | $78,678 | $66,613 |\n"
+        "| Services | 27,421 | 24,213 |"
+    )
+    SPLIT_SYMBOL = (
+        "| | Q3 | | Q2 | |\n| --- | --- | --- | --- | --- |\n"
+        "| Products | $ | 78,678 | $ | 66,613 |\n"
+        "| Services | | 27,421 | | 24,213 |"
+    )
+
+    def test_currency_convention_does_not_penalize(self):
+        assert teds_from_markdown(self.SPLIT_SYMBOL, self.GOLD) == pytest.approx(1.0)
+
+    def test_missing_row_still_penalized(self):
+        truncated = "\n".join(self.SPLIT_SYMBOL.splitlines()[:-1])
+        assert teds_from_markdown(truncated, self.GOLD) < 1.0
+
+    def test_wrong_number_still_penalized(self):
+        wrong = self.SPLIT_SYMBOL.replace("78,678", "99,999")
+        assert teds_from_markdown(wrong, self.GOLD) < 1.0
+
+    def test_structure_only_variant_also_canonical(self):
+        score = teds_from_markdown(self.SPLIT_SYMBOL, self.GOLD, structure_only=True)
+        assert score == pytest.approx(1.0)
+
+    def test_empty_padding_columns_ignored(self):
+        padded = (
+            "| | | Q3 | | Q2 |\n| --- | --- | --- | --- | --- |\n"
+            "| Products | | $78,678 | | $66,613 |\n"
+            "| Services | | 27,421 | | 24,213 |"
+        )
+        assert teds_from_markdown(padded, self.GOLD) == pytest.approx(1.0)
+
+    def test_raw_extraction_still_available(self):
+        from docrouter.metrics.teds import extract_markdown_tables
+
+        raw = extract_markdown_tables(self.SPLIT_SYMBOL, canonical=False)
+        canon = extract_markdown_tables(self.SPLIT_SYMBOL, canonical=True)
+        assert max(len(r) for r in raw[0]) == 5
+        assert max(len(r) for r in canon[0]) == 3

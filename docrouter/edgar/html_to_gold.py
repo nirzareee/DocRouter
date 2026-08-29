@@ -51,19 +51,114 @@ def clean_cell(text: str) -> str:
     return text.replace("|", r"\|")
 
 
+# Cover pages and filer-status blocks are built from checkbox glyphs.
+CHECKBOX_CHARS = set("\u2610\u2611\u2612\u25a1\u2713\u2714\u00d7")
+
+# Table-of-contents rows are dominated by "Item N." / "Part N" labels.
+_TOC_ROW = re.compile(r"^\s*(item|part)\s+[0-9ivx]+", re.I)
+
+
 def _is_layout_table(rows: list[list[str]]) -> bool:
-    """Heuristic: does this table carry data, or is it page furniture?"""
+    """Heuristic: does this table carry data, or is it page furniture?
+
+    No heuristic gets this fully right. Filings use tables for the cover page,
+    the filer-status checkboxes, the table of contents, and page layout, and
+    some of those are structurally indistinguishable from small data tables.
+    The rules below catch the common cases; the rest is what the human review
+    pass in docs/annotation-guide.md exists for.
+    """
     if len(rows) < MIN_DATA_ROWS:
         return True
     width = max((len(r) for r in rows), default=0)
     if width < MIN_DATA_COLS:
         return True
-    # A table where almost every cell is empty is a spacing device.
+
     cells = [c for row in rows for c in row]
     if not cells:
         return True
-    filled = sum(1 for c in cells if c.strip())
-    return filled / len(cells) < 0.25
+    filled = [c for c in cells if c.strip()]
+    if not filled or len(filled) / len(cells) < 0.25:
+        return True
+
+    # Checkbox glyphs mean a form control block, not data.
+    if any(ch in CHECKBOX_CHARS for c in filled for ch in c):
+        return True
+
+    # Table of contents: most rows begin with an Item/Part label.
+    labelled = sum(1 for row in rows if row and _TOC_ROW.match(row[0]))
+    if labelled >= max(3, len(rows) * 0.5):
+        return True
+
+    # Financial tables contain numbers. A table with almost no numeric cells is
+    # usually an address block, a signature block, or a list rendered as a
+    # table. This is the weakest rule here, so keep the threshold low.
+    numeric = sum(1 for c in filled if any(ch.isdigit() for ch in c))
+    return numeric / len(filled) < 0.10
+
+
+# Currency and percent symbols that filings place in their own column.
+_SYMBOL_ONLY = {"$", "%", "\u20ac", "\u00a3", "\u00a5", "(", ")"}
+
+
+def _merge_symbol_columns(rows: list[list[str]]) -> list[list[str]]:
+    """Fold standalone '$' / '%' columns into the adjacent value.
+
+    Filings put the currency symbol in its own table cell for alignment. Left
+    alone this doubles the column count and, worse, shifts headers out of
+    register: a `colspan` header lands above the '$' column instead of above
+    the number it labels.
+
+    This is an annotation decision, not a fact. It is recorded in
+    docs/annotation-guide.md because your parsers may or may not make the same
+    call, and a benchmark where gold and prediction disagree about what counts
+    as a column is measuring the disagreement rather than the backend.
+    """
+    if not rows:
+        return rows
+    width = max(len(r) for r in rows)
+    padded = [r + [""] * (width - len(r)) for r in rows]
+
+    # Classify by looking at adjacent column pairs, not at column totals.
+    #
+    # The obvious rule -- "most values in this column are '$'" -- fails on real
+    # filings. Companies print the currency symbol only on the first line of a
+    # section and on totals, not on every row, so a genuine '$' column may be
+    # only a third symbols. Worse, colspan header origins land in that same
+    # column, so it also contains date labels.
+    #
+    # What is reliable: in every row where the symbol column and the value
+    # column are *both* populated, the left one is always just a symbol.
+    symbol_cols: list[int] = []
+    for c in range(width - 1):
+        paired = [
+            padded[r][c].strip()
+            for r in range(len(padded))
+            if padded[r][c].strip() and padded[r][c + 1].strip()
+        ]
+        if paired and all(v in _SYMBOL_ONLY for v in paired):
+            symbol_cols.append(c)
+
+    if not symbol_cols:
+        return padded
+
+    out = []
+    for row in padded:
+        new_row: list[str] = []
+        carry = ""
+        for c, cell in enumerate(row):
+            if c in symbol_cols:
+                # Carries the symbol on data rows and the colspan header on
+                # header rows, which is what re-aligns the header over its
+                # value column.
+                carry = cell.strip()
+                continue
+            merged = f"{carry}{cell}".strip() if carry else cell
+            new_row.append(merged)
+            carry = ""
+        if carry:
+            new_row.append(carry)
+        out.append(new_row)
+    return out
 
 
 def _drop_empty_columns(rows: list[list[str]]) -> list[list[str]]:
@@ -106,10 +201,15 @@ def table_to_rows(table_el) -> list[list[str]]:
             for dr in range(rowspan):
                 for dc in range(colspan):
                     occupied.add((r + dr, col + dc))
-                    # Spanned cells repeat their value: a flat markdown table
-                    # cannot express the span, so repetition is the honest
-                    # lossy choice. Document it in the annotation guide.
-                    grid[(r + dr, col + dc)] = text if (dr, dc) == (0, 0) else text
+                    # Place the text once, at the span's origin, and leave the
+                    # continuation cells empty. Repeating it across the span
+                    # looks harmless but is not: filings use colspan for
+                    # alignment, so `colspan=3` on every cell triples the
+                    # table width and fills it with duplicated text. Leaving
+                    # continuations empty lets _drop_empty_columns collapse
+                    # pure-layout padding while preserving genuine spans whose
+                    # other columns carry data.
+                    grid[(r + dr, col + dc)] = text if (dr, dc) == (0, 0) else ""
             col += colspan
 
     if not grid:
@@ -191,7 +291,14 @@ def html_to_gold(html_text: str | bytes) -> GoldDocument:
             if any(id(a) in seen_tables for a in el.iterancestors()):
                 continue
             seen_tables.add(id(el))
-            rows = _drop_empty_columns(table_to_rows(el))
+            # Order matters. Colspan continuation columns sit between the
+            # currency symbol and its number, so merging first dumps the '$'
+            # into the empty padding column. Drop padding, then merge, then
+            # drop again since merging can empty a column.
+            rows = table_to_rows(el)
+            rows = _drop_empty_columns(rows)
+            rows = _merge_symbol_columns(rows)
+            rows = _drop_empty_columns(rows)
             if _is_layout_table(rows):
                 continue
             md = rows_to_markdown(rows)
