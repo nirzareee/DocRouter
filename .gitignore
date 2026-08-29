@@ -11,3 +11,6 @@ data/edgar/html/
 
 # Ground truth and results ARE tracked: gold markdown is hand-verified
 # annotation, and the JSONL is the evidence behind every claim in findings.md.
+
+# Parse cache: derived, regenerable, and large.
+.cache/
