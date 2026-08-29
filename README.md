@@ -1,4 +1,4 @@
-# docrouter
+# DocuRouter
 
 Cost-aware routing for document extraction, with a reproducible benchmark
 underneath it.
