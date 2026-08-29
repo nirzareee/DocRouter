@@ -13,6 +13,7 @@ import sys
 from pathlib import Path
 
 from .backends import REGISTRY, available_backends, get_backend
+from .cache import ParseCache
 from .corpus import Corpus
 from .evaluate import evaluate
 
@@ -57,10 +58,18 @@ def cmd_bench(args: argparse.Namespace) -> int:
     print(f"Corpus: {args.corpus}")
     print(f"Backends: {', '.join(b.name for b in backends)}\n")
 
-    run = evaluate(corpus, backends, verbose=not args.quiet)
+    cache = ParseCache(enabled=not args.no_cache)
+    if args.clear_cache:
+        print(f"Cleared {cache.clear()} cache entries\n")
+
+    run = evaluate(corpus, backends, verbose=not args.quiet, cache=cache)
     out = run.write_jsonl(args.out)
 
     print(f"\n{run.format_table()}")
+    if not args.no_cache:
+        st = cache.stats()
+        print(f"\ncache: {st['hits']} hits, {st['misses']} misses "
+              f"({st['hit_rate']*100:.0f}% hit rate, {st['entries']} entries)")
     print(f"\nPer-document rows written to {out}")
     return 0
 
@@ -82,6 +91,10 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--backends", nargs="*", default=None)
     p.add_argument("--out", default="results/run.jsonl")
     p.add_argument("--quiet", action="store_true")
+    p.add_argument("--no-cache", action="store_true",
+                   help="re-parse everything, ignoring cached results")
+    p.add_argument("--clear-cache", action="store_true",
+                   help="delete all cached parses before running")
     p.set_defaults(func=cmd_bench)
 
     args = parser.parse_args(argv)
