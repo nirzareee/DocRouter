@@ -17,6 +17,15 @@ from .cache import ParseCache
 from .corpus import Corpus
 from .evaluate import evaluate
 from .features import extract_corpus_features
+from .router import (
+    always,
+    evaluate_oracle,
+    evaluate_policy,
+    format_comparison,
+    load_features,
+    load_results,
+    text_layer_rule,
+)
 
 
 def cmd_backends(args: argparse.Namespace) -> int:
@@ -67,6 +76,61 @@ def cmd_features(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_route(args: argparse.Namespace) -> int:
+    """Compare routing policies against measured benchmark results."""
+    results = load_results(*args.results)
+    features = load_features(*args.features)
+
+    backends = sorted({b for _, b in results})
+    print(f"{len(features)} documents, backends: {', '.join(backends)}\n")
+
+    evaluated = [
+        evaluate_policy(always(b), features, results, name=f"always({b})")
+        for b in backends
+    ]
+    evaluated.append(
+        evaluate_policy(
+            text_layer_rule(args.cheap, args.expensive),
+            features, results, name="rules(text_layer)",
+        )
+    )
+    evaluated.append(evaluate_oracle(features, results, backends))
+
+    print(format_comparison(evaluated))
+
+    rules = next(r for r in evaluated if r.name == "rules(text_layer)")
+    best = max(
+        (r for r in evaluated if r.name.startswith("always(")),
+        key=lambda r: r.mean_quality,
+    )
+    oracle = next(r for r in evaluated if r.name == "oracle")
+
+    print(f"\nrules vs {best.name}:")
+    print(f"  quality {rules.mean_quality:.3f} vs {best.mean_quality:.3f}"
+          f"  ({rules.mean_quality - best.mean_quality:+.3f})")
+    if best.total_seconds:
+        saved = 1 - rules.total_seconds / best.total_seconds
+        verb = "less" if saved >= 0 else "more"
+        print(f"  time    {rules.total_seconds:.0f}s vs {best.total_seconds:.0f}s"
+              f"  ({abs(saved) * 100:.0f}% {verb})")
+    print(f"  routing overhead: {rules.routing_overhead_s:.1f}s "
+          f"({rules.routing_overhead_s / max(rules.total_seconds, 1e-9) * 100:.2f}% "
+          f"of its own parse time)")
+    print(f"\noracle ceiling: {oracle.mean_quality:.3f} "
+          f"({oracle.mean_quality - rules.mean_quality:+.3f} above rules)")
+
+    if args.out:
+        import json
+
+        out = Path(args.out)
+        out.parent.mkdir(parents=True, exist_ok=True)
+        with open(out, "w", encoding="utf-8") as fh:
+            for r in evaluated:
+                fh.write(json.dumps(r.to_dict()) + "\n")
+        print(f"\nWritten to {out}")
+    return 0
+
+
 def cmd_bench(args: argparse.Namespace) -> int:
     corpus = Corpus(args.corpus)
     if args.backends:
@@ -113,6 +177,18 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("corpus")
     p.add_argument("--out", default="results/features.jsonl")
     p.set_defaults(func=cmd_features)
+
+    p = sub.add_parser("route", help="compare routing policies")
+    p.add_argument("--results", nargs="+", required=True,
+                   help="benchmark JSONL files (clean and degraded)")
+    p.add_argument("--features", nargs="+", required=True,
+                   help="feature JSONL files")
+    p.add_argument("--cheap", default="pylib",
+                   help="backend for documents with a text layer")
+    p.add_argument("--expensive", default="docling",
+                   help="backend for documents without one")
+    p.add_argument("--out", default="results/routing.jsonl")
+    p.set_defaults(func=cmd_route)
 
     p = sub.add_parser("bench", help="run the benchmark over a corpus")
     p.add_argument("corpus")

@@ -70,3 +70,53 @@ Backends: naive, pylib, docling
 RapidOCR returned empty result!
 [33m[WARNING] 2026-08-29 22:14:25,476 [RapidOCR] main.py:132: The text detection result is empty[0m
 RapidOCR returned empty result!
+[32m[INFO] 2026-08-29 22:21:25,558 [RapidOCR] base.py:23: Using engine_name: torch[0m
+[32m[INFO] 2026-08-29 22:21:25,561 [RapidOCR] device_config.py:57: Using CPU device[0m
+[32m[INFO] 2026-08-29 22:21:25,634 [RapidOCR] download_file.py:60: File exists and is valid: /Users/nirzaree/Desktop/Masters /MS_Projects/docrouter/.venv/lib/python3.11/site-packages/rapidocr/models/PP-OCRv6_det_small.pth[0m
+[32m[INFO] 2026-08-29 22:21:25,634 [RapidOCR] main.py:50: Using /Users/nirzaree/Desktop/Masters /MS_Projects/docrouter/.venv/lib/python3.11/site-packages/rapidocr/models/PP-OCRv6_det_small.pth[0m
+[32m[INFO] 2026-08-29 22:21:25,807 [RapidOCR] base.py:23: Using engine_name: torch[0m
+[32m[INFO] 2026-08-29 22:21:25,807 [RapidOCR] device_config.py:57: Using CPU device[0m
+[32m[INFO] 2026-08-29 22:21:25,817 [RapidOCR] download_file.py:60: File exists and is valid: /Users/nirzaree/Desktop/Masters /MS_Projects/docrouter/.venv/lib/python3.11/site-packages/rapidocr/models/ch_ptocr_mobile_v2.0_cls_mobile.pth[0m
+[32m[INFO] 2026-08-29 22:21:25,818 [RapidOCR] main.py:50: Using /Users/nirzaree/Desktop/Masters /MS_Projects/docrouter/.venv/lib/python3.11/site-packages/rapidocr/models/ch_ptocr_mobile_v2.0_cls_mobile.pth[0m
+[32m[INFO] 2026-08-29 22:21:25,865 [RapidOCR] base.py:23: Using engine_name: torch[0m
+[32m[INFO] 2026-08-29 22:21:25,865 [RapidOCR] device_config.py:57: Using CPU device[0m
+[32m[INFO] 2026-08-29 22:21:25,948 [RapidOCR] download_file.py:60: File exists and is valid: /Users/nirzaree/Desktop/Masters /MS_Projects/docrouter/.venv/lib/python3.11/site-packages/rapidocr/models/PP-OCRv6_rec_small.pth[0m
+[32m[INFO] 2026-08-29 22:21:25,948 [RapidOCR] main.py:50: Using /Users/nirzaree/Desktop/Masters /MS_Projects/docrouter/.venv/lib/python3.11/site-packages/rapidocr/models/PP-OCRv6_rec_small.pth[0m
+  CVX_10K_2026-02-24   docling      0.658
+  CVX_10Q_2026-05-07   naive        0.481
+  CVX_10Q_2026-05-07   pylib        0.630
+Loading weights:   0%|          | 0/770 [00:00<?, ?it/s]Loading weights:  80%|████████  | 616/770 [00:00<00:00, 6151.75it/s]Loading weights: 100%|██████████| 770/770 [00:00<00:00, 6447.61it/s]
+[32m[INFO] 2026-08-29 22:29:04,426 [RapidOCR] base.py:23: Using engine_name: torch[0m
+[32m[INFO] 2026-08-29 22:29:04,432 [RapidOCR] device_config.py:57: Using CPU device[0m
+[32m[INFO] 2026-08-29 22:29:04,504 [RapidOCR] download_file.py:60: File exists and is valid: /Users/nirzaree/Desktop/Masters /MS_Projects/docrouter/.venv/lib/python3.11/site-packages/rapidocr/models/PP-OCRv6_det_small.pth[0m
+[32m[INFO] 2026-08-29 22:29:04,504 [RapidOCR] main.py:50: Using /Users/nirzaree/Desktop/Masters /MS_Projects/docrouter/.venv/lib/python3.11/site-packages/rapidocr/models/PP-OCRv6_det_small.pth[0m
+[32m[INFO] 2026-08-29 22:29:04,694 [RapidOCR] base.py:23: Using engine_name: torch[0m
+[32m[INFO] 2026-08-29 22:29:04,694 [RapidOCR] device_config.py:57: Using CPU device[0m
+[32m[INFO] 2026-08-29 22:29:04,704 [RapidOCR] download_file.py:60: File exists and is valid: /Users/nirzaree/Desktop/Masters /MS_Projects/docrouter/.venv/lib/python3.11/site-packages/rapidocr/models/ch_ptocr_mobile_v2.0_cls_mobile.pth[0m
+[32m[INFO] 2026-08-29 22:29:04,704 [RapidOCR] main.py:50: Using /Users/nirzaree/Desktop/Masters /MS_Projects/docrouter/.venv/lib/python3.11/site-packages/rapidocr/models/ch_ptocr_mobile_v2.0_cls_mobile.pth[0m
+[32m[INFO] 2026-08-29 22:29:04,757 [RapidOCR] base.py:23: Using engine_name: torch[0m
+[32m[INFO] 2026-08-29 22:29:04,758 [RapidOCR] device_config.py:57: Using CPU device[0m
+[32m[INFO] 2026-08-29 22:29:04,851 [RapidOCR] download_file.py:60: File exists and is valid: /Users/nirzaree/Desktop/Masters /MS_Projects/docrouter/.venv/lib/python3.11/site-packages/rapidocr/models/PP-OCRv6_rec_small.pth[0m
+[32m[INFO] 2026-08-29 22:29:04,851 [RapidOCR] main.py:50: Using /Users/nirzaree/Desktop/Masters /MS_Projects/docrouter/.venv/lib/python3.11/site-packages/rapidocr/models/PP-OCRv6_rec_small.pth[0m
+  CVX_10Q_2026-05-07   docling      0.651
+  CVX_10Q_2026-08-06   naive        0.467
+  CVX_10Q_2026-08-06   pylib        0.619
+Loading weights:   0%|          | 0/770 [00:00<?, ?it/s]Loading weights:  99%|█████████▊| 759/770 [00:00<00:00, 7587.57it/s]Loading weights: 100%|██████████| 770/770 [00:00<00:00, 7622.55it/s]
+[33m[WARNING] 2026-08-29 22:29:54,462 [RapidOCR] main.py:132: The text detection result is empty[0m
+RapidOCR returned empty result!
+[32m[INFO] 2026-08-29 22:43:44,270 [RapidOCR] base.py:23: Using engine_name: torch[0m
+[32m[INFO] 2026-08-29 22:43:44,276 [RapidOCR] device_config.py:57: Using CPU device[0m
+[32m[INFO] 2026-08-29 22:43:44,365 [RapidOCR] download_file.py:60: File exists and is valid: /Users/nirzaree/Desktop/Masters /MS_Projects/docrouter/.venv/lib/python3.11/site-packages/rapidocr/models/PP-OCRv6_det_small.pth[0m
+[32m[INFO] 2026-08-29 22:43:44,365 [RapidOCR] main.py:50: Using /Users/nirzaree/Desktop/Masters /MS_Projects/docrouter/.venv/lib/python3.11/site-packages/rapidocr/models/PP-OCRv6_det_small.pth[0m
+[32m[INFO] 2026-08-29 22:43:44,579 [RapidOCR] base.py:23: Using engine_name: torch[0m
+[32m[INFO] 2026-08-29 22:43:44,579 [RapidOCR] device_config.py:57: Using CPU device[0m
+[32m[INFO] 2026-08-29 22:43:44,590 [RapidOCR] download_file.py:60: File exists and is valid: /Users/nirzaree/Desktop/Masters /MS_Projects/docrouter/.venv/lib/python3.11/site-packages/rapidocr/models/ch_ptocr_mobile_v2.0_cls_mobile.pth[0m
+[32m[INFO] 2026-08-29 22:43:44,590 [RapidOCR] main.py:50: Using /Users/nirzaree/Desktop/Masters /MS_Projects/docrouter/.venv/lib/python3.11/site-packages/rapidocr/models/ch_ptocr_mobile_v2.0_cls_mobile.pth[0m
+[32m[INFO] 2026-08-29 22:43:44,641 [RapidOCR] base.py:23: Using engine_name: torch[0m
+[32m[INFO] 2026-08-29 22:43:44,641 [RapidOCR] device_config.py:57: Using CPU device[0m
+[32m[INFO] 2026-08-29 22:43:44,723 [RapidOCR] download_file.py:60: File exists and is valid: /Users/nirzaree/Desktop/Masters /MS_Projects/docrouter/.venv/lib/python3.11/site-packages/rapidocr/models/PP-OCRv6_rec_small.pth[0m
+[32m[INFO] 2026-08-29 22:43:44,724 [RapidOCR] main.py:50: Using /Users/nirzaree/Desktop/Masters /MS_Projects/docrouter/.venv/lib/python3.11/site-packages/rapidocr/models/PP-OCRv6_rec_small.pth[0m
+  CVX_10Q_2026-08-06   docling      0.655
+  JPM_10K_2026-02-13   naive        0.150
+  JPM_10K_2026-02-13   pylib        0.320
+Loading weights:   0%|          | 0/770 [00:00<?, ?it/s]Loading weights:  34%|███▍      | 265/770 [00:00<00:00, 2481.00it/s]Loading weights:  67%|██████▋   | 514/770 [00:00<00:00, 2012.67it/s]Loading weights: 100%|██████████| 770/770 [00:00<00:00, 2557.33it/s]
