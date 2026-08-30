@@ -20,6 +20,7 @@ from pathlib import Path
 from typing import Any, Iterable
 
 from .backends import Backend
+from .cache import ParseCache
 from .corpus import Corpus, Sample
 from .metrics import DocumentScore, score_document
 
@@ -100,6 +101,7 @@ def evaluate(
     corpus: Corpus,
     backends: Iterable[Backend],
     verbose: bool = True,
+    cache: ParseCache | None = None,
 ) -> EvalRun:
     backends = list(backends)
     rows: list[dict[str, Any]] = []
@@ -108,7 +110,20 @@ def evaluate(
         for backend in backends:
             if not backend.supports(sample.doc_path):
                 continue
-            result = backend.parse(sample.doc_path)
+
+            result = None
+            doc_id = None
+            if cache is not None:
+                from .backends.base import doc_id_for
+
+                doc_id = doc_id_for(sample.doc_path)
+                result = cache.get(doc_id, backend.name, backend.version)
+
+            cached = result is not None
+            if result is None:
+                result = backend.parse(sample.doc_path)
+                if cache is not None:
+                    cache.put(result, backend.name, backend.version)
             score = score_document(
                 pred_markdown=result.markdown,
                 gold_markdown=sample.gold_markdown,
@@ -126,6 +141,7 @@ def evaluate(
 
             if verbose:
                 status = "FAIL" if result.error else f"{score.overall:.3f}"
-                print(f"  {sample.doc_key:<20} {backend.name:<12} {status}")
+                mark = " (cached)" if cached else ""
+                print(f"  {sample.doc_key:<20} {backend.name:<12} {status}{mark}")
 
     return EvalRun(rows=rows)
