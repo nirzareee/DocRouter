@@ -15,6 +15,9 @@ playwright>=1.40
 reportlab>=4.0
 pytest>=8.0
 
+# VLM backend (needs ANTHROPIC_API_KEY)
+anthropic>=0.40
+
 # Optional backends (install as you add tiers)
 # docling>=2.0
 # marker-pdf>=1.0

@@ -106,6 +106,70 @@ strawman.
 
 ---
 
+## F3 — The routing signal costs 0.5% of the decision it makes
+
+**Status:** established on this corpus, n=28 per condition.
+
+A router is only worth building if deciding is much cheaper than doing. Feature
+extraction (`docrouter/features.py`) samples 8 pages and reads character counts,
+ruling lines, image coverage, and word geometry directly from the PDF, without
+running any backend.
+
+| condition | documents | classified scanned | ms/doc |
+|---|---|---|---|
+| clean | 28 | **0** | 905 |
+| degraded | 28 | **28** | 76 |
+
+Text-layer presence separates the two conditions **perfectly**: no false
+positives, no false negatives, 56/56 correct.
+
+### Why this makes routing viable
+
+| | per document |
+|---|---|
+| Docling parse | ~180,000 ms |
+| Routing decision | 905 ms |
+| **Overhead** | **0.5%** |
+
+The decision is ~200x cheaper than the cheapest thing it can decide to do, and
+~2,400x cheaper on the degraded arm where the answer arrives in 76 ms because
+there is no text layer to sample. Across the whole corpus, feature extraction
+costs 27 seconds against roughly 5 hours of Docling.
+
+Note the inversion: classification is *slower* on the documents that need the
+*cheaper* backend. Clean PDFs have text to sample; rasterized ones exit almost
+immediately. This is the right direction — the expensive branch is identified
+fastest.
+
+### The resulting rules baseline
+
+```python
+if not features.has_text_layer:
+    return "docling"
+return "pylib"
+```
+
+One condition, no training. Any learned router has to beat this, and on a
+corpus with a binary degradation condition it may not. That would itself be a
+result worth reporting: the feature that matters was identifiable by inspection,
+and the model adds nothing.
+
+### Limitations
+
+- **`est_columns` was 1 for all 28 documents.** Chromium renders SEC HTML
+  single-column, so the corpus never exercises multi-column layout. The
+  geometric column detection in `pylib` — one of its selling points — is
+  therefore validated only on synthetic documents. Any claim about
+  multi-column handling is currently unsupported by real data.
+- The clean/degraded split is synthetic and binary. Real corpora contain
+  partially-degraded documents, mixed scanned and digital pages within one
+  file, and PDFs with sparse or wrong text layers. Perfect separation here says
+  the feature works on a clean dichotomy, not that it is robust.
+- Table-density proxies (`lines_per_page`, `rects_per_page`) are computed but
+  not yet validated against anything.
+
+---
+
 ## Bug log
 
 Each of these was invisible until real data hit it, and most were hidden by a

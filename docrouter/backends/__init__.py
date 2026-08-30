@@ -10,6 +10,7 @@ from __future__ import annotations
 from .base import Backend, ParseResult, doc_id_for
 from .local import NaiveBackend, PyLibBackend
 from .docling_backend import DoclingBackend
+from .vlm import VLMBackend
 
 __all__ = [
     "Backend",
@@ -24,6 +25,7 @@ REGISTRY: dict[str, type[Backend]] = {
     NaiveBackend.name: NaiveBackend,
     PyLibBackend.name: PyLibBackend,
     DoclingBackend.name: DoclingBackend,
+    VLMBackend.name: VLMBackend,
 }
 
 

@@ -66,3 +66,7 @@ Backends: naive, pylib, docling
   CVX_10K_2026-02-24   naive        0.471
   CVX_10K_2026-02-24   pylib        0.545
 Loading weights:   0%|          | 0/770 [00:00<?, ?it/s]Loading weights: 100%|██████████| 770/770 [00:00<00:00, 10811.55it/s]
+[33m[WARNING] 2026-08-29 22:12:33,576 [RapidOCR] main.py:132: The text detection result is empty[0m
+RapidOCR returned empty result!
+[33m[WARNING] 2026-08-29 22:14:25,476 [RapidOCR] main.py:132: The text detection result is empty[0m
+RapidOCR returned empty result!
