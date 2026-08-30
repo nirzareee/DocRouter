@@ -224,3 +224,75 @@ class TestCanonicalization:
         canon = extract_markdown_tables(self.SPLIT_SYMBOL, canonical=True)
         assert max(len(r) for r in raw[0]) == 5
         assert max(len(r) for r in canon[0]) == 3
+
+
+class TestReadingOrderAtScale:
+    """The blocking path must agree with exact matching, not just be fast.
+
+    Large filings (a bank 10-K has ~5,600 paragraphs) made full pred x gold
+    matching quadratic: minutes per backend per document, slower than some
+    backends being measured. Candidates are now narrowed by shared rare words
+    before scoring.
+
+    An earlier attempt narrowed by *position*, assuming a predicted block sits
+    near its gold counterpart. It was 33x faster and wrong: a backend that
+    dropped half the document scored 0.030 instead of 0.500, because every
+    surviving block was displaced past the window. These tests exist so that
+    class of optimization cannot land silently again.
+    """
+
+    @staticmethod
+    def _sentences(n: int) -> list[str]:
+        import random
+
+        rng = random.Random(0)
+        words = "revenue segment quarter allowance deferred operating expense".split()
+        return [
+            " ".join(rng.choice(words) for _ in range(18)) + f" marker{i}."
+            for i in range(n)
+        ]
+
+    @pytest.mark.parametrize("n", [400, 5000])
+    def test_identical_scores_one(self, n):
+        from docrouter.metrics.text import reading_order_score
+
+        doc = " ".join(self._sentences(n))
+        assert reading_order_score(doc, doc) == pytest.approx(1.0)
+
+    @pytest.mark.parametrize("n", [400, 5000])
+    def test_reversed_scores_zero(self, n):
+        from docrouter.metrics.text import reading_order_score
+
+        s = self._sentences(n)
+        assert reading_order_score(" ".join(reversed(s)), " ".join(s)) < 0.05
+
+    @pytest.mark.parametrize("n", [400, 5000])
+    def test_half_the_document_missing_scores_about_half(self, n):
+        # The regression that killed positional windowing. Dropped content must
+        # cost coverage, not collapse the score to zero.
+        from docrouter.metrics.text import reading_order_score
+
+        s = self._sentences(n)
+        score = reading_order_score(" ".join(s[: n // 2]), " ".join(s))
+        assert 0.40 < score < 0.60
+
+    @pytest.mark.parametrize("n", [400, 5000])
+    def test_halves_swapped_scores_about_half(self, n):
+        # A large-displacement error: correct locally, wrong globally.
+        from docrouter.metrics.text import reading_order_score
+
+        s = self._sentences(n)
+        swapped = s[n // 2:] + s[: n // 2]
+        score = reading_order_score(" ".join(swapped), " ".join(s))
+        assert 0.40 < score < 0.60
+
+    def test_large_document_scores_quickly(self):
+        import time
+
+        from docrouter.metrics.text import reading_order_score
+
+        doc = " ".join(self._sentences(8000))
+        start = time.perf_counter()
+        reading_order_score(doc, doc)
+        elapsed = time.perf_counter() - start
+        assert elapsed < 30, f"took {elapsed:.1f}s on 8000 sentences"

@@ -112,12 +112,17 @@ class PyLibBackend(Backend):
 
         blocks: list[str] = []
         n_tables = 0
+        n_fragments = 0
         with pdfplumber.open(path) as pdf:
             pages = len(pdf.pages)
             for page in pdf.pages:
-                tables = page.find_tables()
-                n_tables += len(tables)
-                table_boxes = [t.bbox for t in tables]
+                raw_tables = page.find_tables()
+                n_fragments += len(raw_tables)
+                groups = _group_table_fragments(raw_tables)
+                n_tables += len(groups)
+                table_boxes = [
+                    _group_bbox(g) for g in groups
+                ]
 
                 # Remove table regions before pulling body text, otherwise every
                 # cell value appears twice: once as prose, once in the table.
@@ -136,12 +141,74 @@ class PyLibBackend(Backend):
                 lines = order_words(words, page.width)
                 blocks.extend(lines_to_paragraphs(lines))
 
-                for table in tables:
-                    rows = table.extract()
-                    if rows:
+                for group in groups:
+                    rows: list[list[str | None]] = []
+                    for table in group:
+                        rows.extend(table.extract() or [])
+                    if len(rows) >= 2:
                         blocks.append(_rows_to_md(rows))
 
-        return "\n\n".join(blocks), pages, {"tables": n_tables}
+        return (
+            "\n\n".join(blocks),
+            pages,
+            {"tables": n_tables, "raw_fragments": n_fragments},
+        )
+
+
+# Tolerances for stitching table fragments back together.
+X_TOLERANCE = 3.0   # points; fragments of one table share left/right edges
+GAP_FACTOR = 2.5    # multiples of fragment height allowed between fragments
+
+
+def _group_bbox(group: list[Any]) -> tuple[float, float, float, float]:
+    return (
+        min(t.bbox[0] for t in group),
+        min(t.bbox[1] for t in group),
+        max(t.bbox[2] for t in group),
+        max(t.bbox[3] for t in group),
+    )
+
+
+def _group_table_fragments(tables: list[Any]) -> list[list[Any]]:
+    """Stitch single-row table fragments back into whole tables.
+
+    pdfplumber's line-based detection returns one Table per ruled row on some
+    filings: a 97-page Microsoft 10-Q produced 235 "tables", most of them a
+    single row like ['Revenue:', '', '', ...]. Downstream every one is
+    discarded, because a table needs at least two rows to be a table. The
+    document scored TEDS 0.011 against 41 real tables -- not because structure
+    was recovered badly, but because it was never assembled.
+
+    Fragments of one table share left and right edges almost exactly and stack
+    with roughly one line of vertical gap. Group on that, concatenate the rows,
+    and the table comes back.
+
+    Tables that were detected correctly in the first place are single-element
+    groups, so this is a no-op on documents that never had the problem.
+    """
+    if not tables:
+        return []
+
+    ordered = sorted(tables, key=lambda t: (t.bbox[1], t.bbox[0]))
+    groups: list[list[Any]] = [[ordered[0]]]
+
+    for table in ordered[1:]:
+        prev = groups[-1][-1]
+        px0, _, px1, pbottom = prev.bbox
+        x0, top, x1, bottom = table.bbox
+
+        same_columns = (
+            abs(x0 - px0) <= X_TOLERANCE and abs(x1 - px1) <= X_TOLERANCE
+        )
+        height = max(bottom - top, pbottom - prev.bbox[1], 1.0)
+        adjacent = 0 <= (top - pbottom) <= height * GAP_FACTOR
+
+        if same_columns and adjacent:
+            groups[-1].append(table)
+        else:
+            groups.append([table])
+
+    return groups
 
 
 def _inside(obj: dict[str, Any], bbox: tuple[float, float, float, float]) -> bool:

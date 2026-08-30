@@ -4,10 +4,13 @@ __pycache__/
 .pytest_cache/
 .DS_Store
 
+# Parse cache: derived and regenerable.
+.cache/
+
 # Binary inputs are regenerable from sources.jsonl + build_corpus.py.
-data/*/docs/*.pdf
-data/*/docs/*.docx
+# Note the ** : real paths are data/edgar/clean/docs/, two levels deep.
+data/**/docs/*.pdf
+data/**/docs/*.docx
 data/edgar/html/
 
-# Ground truth and results ARE tracked: gold markdown is hand-verified
-# annotation, and the JSONL is the evidence behind every claim in findings.md.
+# Ground truth, provenance, and results ARE tracked: annotation and evidence.
