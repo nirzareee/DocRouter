@@ -49,6 +49,10 @@ class Backend(abc.ABC):
 
     name: str = "unnamed"
 
+    # Bump when a backend's output could change, so cached parses from the old
+    # behavior are invalidated without clearing every other backend's entries.
+    version: str = "1"
+
     # Rough per-page cost in USD. Local backends are not free (GPU time, wall
     # clock) but they are cheap enough that the router mostly trades latency.
     cost_per_page_usd: float = 0.0

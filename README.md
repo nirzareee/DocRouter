@@ -197,21 +197,34 @@ regression tests.
 
 ## Roadmap
 
+**Done**
+
 - [x] Metrics: TEDS, TEDS-S, text similarity, reading order
 - [x] Harness: corpus loader, runner, JSONL output, results table
-- [x] Baseline backends + geometric column detection
+- [x] Baseline backends + geometric column detection + table fragment stitching
 - [x] EDGAR pipeline: fetcher, HTML-to-gold, PDF render, degradation
-- [x] Matched clean/degraded benchmark across three backends
-- [ ] Scale to ~30 filings across companies, forms, and filing agents
-- [ ] Content-hash cache (a 30-doc sweep is currently ~5 hours)
-- [ ] Feature extractor: text-layer presence, page count, table density, columns
-- [ ] Router: rules baseline, then learned; report the cost/accuracy Pareto
-      curve against always-cheapest and always-best
-- [ ] Replace `cost_per_page_usd` placeholders with measured hardware cost
-- [ ] LangGraph pipeline: grounding check, escalation, checkpointing
-- [ ] FastAPI service, Docker, CI
+- [x] Corpus scaled to 28 filings / 3,433 pages across 10 companies
+- [x] Content-hash parse cache
+- [x] Feature extractor: text-layer presence, columns, table proxies, page count
+- [x] CI: tests on 3.11/3.12 plus a benchmark discrimination check
 
----
+**Next**
+
+- [ ] Docling across all 28 filings, both conditions (currently n=1)
+- [ ] **Router**: rules baseline on text-layer presence, then a learned
+      classifier; report the cost/accuracy Pareto curve against always-cheapest
+      and always-best
+- [ ] **VLM backend**: page images to a vision-language model, as the expensive
+      tier. Adds a genuinely costly fourth point to the Pareto curve and makes
+      the routing decision non-trivial
+- [ ] Replace `cost_per_page_usd` placeholders with measured hardware cost
+- [ ] Record empty output as a distinct outcome from success
+
+**Maybe**
+
+- [ ] Downstream QA evaluation: does better extraction improve answer accuracy?
+- [ ] LangGraph pipeline: grounding check, escalation, checkpointing
+- [ ] FastAPI service and Docker
 
 ## References
 

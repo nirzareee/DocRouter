@@ -13,8 +13,10 @@ import sys
 from pathlib import Path
 
 from .backends import REGISTRY, available_backends, get_backend
+from .cache import ParseCache
 from .corpus import Corpus
 from .evaluate import evaluate
+from .features import extract_corpus_features
 
 
 def cmd_backends(args: argparse.Namespace) -> int:
@@ -43,6 +45,28 @@ def cmd_parse(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_features(args: argparse.Namespace) -> int:
+    """Compute routing features for a corpus and write them to JSONL."""
+    import json
+
+    feats = extract_corpus_features(args.corpus)
+    out = Path(args.out)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    with open(out, "w", encoding="utf-8") as fh:
+        for f in feats:
+            fh.write(json.dumps(f.to_dict()) + "\n")
+
+    total_ms = sum(f.feature_time_ms for f in feats)
+    scanned = sum(1 for f in feats if f.is_scanned)
+    print(f"{len(feats)} documents")
+    print(f"  scanned (no text layer): {scanned}")
+    print(f"  multi-column:            {sum(1 for f in feats if f.est_columns > 1)}")
+    print(f"  total feature time:      {total_ms:.0f} ms "
+          f"({total_ms / max(len(feats), 1):.0f} ms/doc)")
+    print(f"\nWritten to {out}")
+    return 0
+
+
 def cmd_bench(args: argparse.Namespace) -> int:
     corpus = Corpus(args.corpus)
     if args.backends:
@@ -57,10 +81,18 @@ def cmd_bench(args: argparse.Namespace) -> int:
     print(f"Corpus: {args.corpus}")
     print(f"Backends: {', '.join(b.name for b in backends)}\n")
 
-    run = evaluate(corpus, backends, verbose=not args.quiet)
+    cache = ParseCache(enabled=not args.no_cache)
+    if args.clear_cache:
+        print(f"Cleared {cache.clear()} cache entries\n")
+
+    run = evaluate(corpus, backends, verbose=not args.quiet, cache=cache)
     out = run.write_jsonl(args.out)
 
     print(f"\n{run.format_table()}")
+    if not args.no_cache:
+        st = cache.stats()
+        print(f"\ncache: {st['hits']} hits, {st['misses']} misses "
+              f"({st['hit_rate']*100:.0f}% hit rate, {st['entries']} entries)")
     print(f"\nPer-document rows written to {out}")
     return 0
 
@@ -77,11 +109,20 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--backend", default="pylib")
     p.set_defaults(func=cmd_parse)
 
+    p = sub.add_parser("features", help="compute routing features for a corpus")
+    p.add_argument("corpus")
+    p.add_argument("--out", default="results/features.jsonl")
+    p.set_defaults(func=cmd_features)
+
     p = sub.add_parser("bench", help="run the benchmark over a corpus")
     p.add_argument("corpus")
     p.add_argument("--backends", nargs="*", default=None)
     p.add_argument("--out", default="results/run.jsonl")
     p.add_argument("--quiet", action="store_true")
+    p.add_argument("--no-cache", action="store_true",
+                   help="re-parse everything, ignoring cached results")
+    p.add_argument("--clear-cache", action="store_true",
+                   help="delete all cached parses before running")
     p.set_defaults(func=cmd_bench)
 
     args = parser.parse_args(argv)
