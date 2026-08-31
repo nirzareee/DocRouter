@@ -14,3 +14,4 @@ data/**/docs/*.docx
 data/edgar/html/
 
 # Ground truth, provenance, and results ARE tracked: annotation and evidence.
+logs_*.txt

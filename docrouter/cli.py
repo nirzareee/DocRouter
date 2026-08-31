@@ -16,6 +16,17 @@ from .backends import REGISTRY, available_backends, get_backend
 from .cache import ParseCache
 from .corpus import Corpus
 from .evaluate import evaluate
+from .features import extract_corpus_features
+from .router import (
+    always,
+    complete_documents,
+    evaluate_oracle,
+    evaluate_policy,
+    format_comparison,
+    load_features,
+    load_results,
+    text_layer_rule,
+)
 
 
 def cmd_backends(args: argparse.Namespace) -> int:
@@ -44,6 +55,96 @@ def cmd_parse(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_features(args: argparse.Namespace) -> int:
+    """Compute routing features for a corpus and write them to JSONL."""
+    import json
+
+    feats = extract_corpus_features(args.corpus)
+    out = Path(args.out)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    with open(out, "w", encoding="utf-8") as fh:
+        for f in feats:
+            fh.write(json.dumps(f.to_dict()) + "\n")
+
+    total_ms = sum(f.feature_time_ms for f in feats)
+    scanned = sum(1 for f in feats if f.is_scanned)
+    print(f"{len(feats)} documents")
+    print(f"  scanned (no text layer): {scanned}")
+    print(f"  multi-column:            {sum(1 for f in feats if f.est_columns > 1)}")
+    print(f"  total feature time:      {total_ms:.0f} ms "
+          f"({total_ms / max(len(feats), 1):.0f} ms/doc)")
+    print(f"\nWritten to {out}")
+    return 0
+
+
+def cmd_route(args: argparse.Namespace) -> int:
+    """Compare routing policies against measured benchmark results."""
+    results = load_results(*args.results)
+    features = load_features(*args.features)
+
+    backends = sorted({b for _, b in results})
+    n_all = len(features)
+
+    if args.complete_only:
+        features = complete_documents(features, results, backends)
+        dropped = n_all - len(features)
+        if dropped:
+            print(f"Restricted to {len(features)} of {n_all} documents scored by "
+                  f"every backend ({dropped} incomplete, excluded).")
+    print(f"{len(features)} documents, backends: {', '.join(backends)}\n")
+
+    if not features:
+        print("No document has results from every backend. "
+              "Finish the sweep, or pass fewer backends.")
+        return 1
+
+    evaluated = [
+        evaluate_policy(always(b), features, results, name=f"always({b})")
+        for b in backends
+    ]
+    evaluated.append(
+        evaluate_policy(
+            text_layer_rule(args.cheap, args.expensive),
+            features, results, name="rules(text_layer)",
+        )
+    )
+    evaluated.append(evaluate_oracle(features, results, backends))
+
+    print(format_comparison(evaluated))
+
+    rules = next(r for r in evaluated if r.name == "rules(text_layer)")
+    best = max(
+        (r for r in evaluated if r.name.startswith("always(")),
+        key=lambda r: r.mean_quality,
+    )
+    oracle = next(r for r in evaluated if r.name == "oracle")
+
+    print(f"\nrules vs {best.name}:")
+    print(f"  quality {rules.mean_quality:.3f} vs {best.mean_quality:.3f}"
+          f"  ({rules.mean_quality - best.mean_quality:+.3f})")
+    if best.total_seconds:
+        saved = 1 - rules.total_seconds / best.total_seconds
+        verb = "less" if saved >= 0 else "more"
+        print(f"  time    {rules.total_seconds:.0f}s vs {best.total_seconds:.0f}s"
+              f"  ({abs(saved) * 100:.0f}% {verb})")
+    print(f"  routing overhead: {rules.routing_overhead_s:.1f}s "
+          f"({rules.routing_overhead_s / max(rules.total_seconds, 1e-9) * 100:.2f}% "
+          f"of its own parse time)")
+    print(f"\noracle ceiling: {oracle.mean_quality:.3f} "
+          f"({oracle.mean_quality - rules.mean_quality:+.3f} above rules)")
+
+    if args.out:
+        import json
+
+        out = Path(args.out)
+        out.parent.mkdir(parents=True, exist_ok=True)
+        with open(out, "w", encoding="utf-8") as fh:
+            for r in evaluated:
+                fh.write(json.dumps(r.to_dict()) + "\n")
+        print(f"\nWritten to {out}")
+    return 0
+
+
 def cmd_bench(args: argparse.Namespace) -> int:
     corpus = Corpus(args.corpus)
     if args.backends:
@@ -62,6 +163,12 @@ def cmd_bench(args: argparse.Namespace) -> int:
     if args.clear_cache:
         print(f"Cleared {cache.clear()} cache entries\n")
 
+    # Stream rows to disk as they are produced so a crash mid-sweep keeps
+    # everything scored so far.
+    run = evaluate(
+        corpus, backends, verbose=not args.quiet, cache=cache, out_path=args.out
+    )
+    out = Path(args.out)
     run = evaluate(corpus, backends, verbose=not args.quiet, cache=cache)
     out = run.write_jsonl(args.out)
 
@@ -85,6 +192,25 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("path")
     p.add_argument("--backend", default="pylib")
     p.set_defaults(func=cmd_parse)
+
+    p = sub.add_parser("features", help="compute routing features for a corpus")
+    p.add_argument("corpus")
+    p.add_argument("--out", default="results/features.jsonl")
+    p.set_defaults(func=cmd_features)
+
+    p = sub.add_parser("route", help="compare routing policies")
+    p.add_argument("--results", nargs="+", required=True,
+                   help="benchmark JSONL files (clean and degraded)")
+    p.add_argument("--features", nargs="+", required=True,
+                   help="feature JSONL files")
+    p.add_argument("--cheap", default="pylib",
+                   help="backend for documents with a text layer")
+    p.add_argument("--expensive", default="docling",
+                   help="backend for documents without one")
+    p.add_argument("--out", default="results/routing.jsonl")
+    p.add_argument("--complete-only", action="store_true",
+                   help="evaluate only documents scored by every backend")
+    p.set_defaults(func=cmd_route)
 
     p = sub.add_parser("bench", help="run the benchmark over a corpus")
     p.add_argument("corpus")

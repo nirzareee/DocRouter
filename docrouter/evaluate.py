@@ -102,8 +102,40 @@ def evaluate(
     backends: Iterable[Backend],
     verbose: bool = True,
     cache: ParseCache | None = None,
+    out_path: str | Path | None = None,
 ) -> EvalRun:
+    """Score every backend over every document.
+
+    Rows are appended to `out_path` as they are produced, not held until the
+    end. A four-hour Docling sweep that dies on document 8 of 28 must not lose
+    the first seven: the runner is long enough that a crash is a normal
+    outcome, and results that only exist in memory are results you can lose.
+    """
     backends = list(backends)
+    rows: list[dict[str, Any]] = []
+
+    sink = None
+    if out_path is not None:
+        out_path = Path(out_path)
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        sink = open(out_path, "w", encoding="utf-8")
+
+    try:
+        rows = _run(corpus, backends, verbose, cache, sink)
+    finally:
+        if sink is not None:
+            sink.close()
+
+    return EvalRun(rows=rows)
+
+
+def _run(
+    corpus: Corpus,
+    backends: list[Backend],
+    verbose: bool,
+    cache: ParseCache | None,
+    sink: Any,
+) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
 
     for sample in corpus:
@@ -139,9 +171,16 @@ def evaluate(
             row["error"] = result.error
             rows.append(row)
 
+            if sink is not None:
+                # Flush per row: a killed process still leaves valid JSONL.
+                sink.write(json.dumps(row) + "\n")
+                sink.flush()
+
             if verbose:
                 status = "FAIL" if result.error else f"{score.overall:.3f}"
                 mark = " (cached)" if cached else ""
+                print(f"  {sample.doc_key:<20} {backend.name:<12} {status}{mark}",
+                      flush=True)
                 print(f"  {sample.doc_key:<20} {backend.name:<12} {status}{mark}")
 
-    return EvalRun(rows=rows)
+    return rows

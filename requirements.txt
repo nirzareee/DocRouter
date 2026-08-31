@@ -16,6 +16,7 @@ reportlab>=4.0
 pytest>=8.0
 
 # Optional backends (install as you add tiers)
+# anthropic>=0.40        # VLM tier; needs ANTHROPIC_API_KEY and costs money
 # docling>=2.0
 # marker-pdf>=1.0
 # magic-pdf[full]        # MinerU, needs a GPU
