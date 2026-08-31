@@ -1,0 +1,72 @@
+Corpus: data/edgar/degraded
+Backends: naive, pylib, docling
+
+  AAPL_10Q_2026-01-30  naive        0.000 (cached)
+  AAPL_10Q_2026-01-30  pylib        0.000 (cached)
+  AAPL_10Q_2026-01-30  docling      0.668 (cached)
+  AAPL_10Q_2026-05-01  naive        0.000 (cached)
+  AAPL_10Q_2026-05-01  pylib        0.000 (cached)
+  AAPL_10Q_2026-05-01  docling      0.651 (cached)
+  AAPL_10Q_2026-07-31  naive        0.000 (cached)
+  AAPL_10Q_2026-07-31  pylib        0.000 (cached)
+  AAPL_10Q_2026-07-31  docling      0.644 (cached)
+  CVX_10K_2026-02-24   naive        0.000 (cached)
+  CVX_10K_2026-02-24   pylib        0.000 (cached)
+  CVX_10K_2026-02-24   docling      0.629 (cached)
+  CVX_10Q_2026-05-07   naive        0.000 (cached)
+  CVX_10Q_2026-05-07   pylib        0.000 (cached)
+  CVX_10Q_2026-05-07   docling      0.626 (cached)
+  CVX_10Q_2026-08-06   naive        0.000 (cached)
+  CVX_10Q_2026-08-06   pylib        0.000 (cached)
+  CVX_10Q_2026-08-06   docling      0.629 (cached)
+  JPM_10K_2026-02-13   naive        0.000 (cached)
+  JPM_10K_2026-02-13   pylib        0.000 (cached)
+  JPM_10K_2026-02-13   docling      0.399 (cached)
+  JPM_10Q_2026-05-01   naive        0.000 (cached)
+  JPM_10Q_2026-05-01   pylib        0.000 (cached)
+  JPM_10Q_2026-05-01   docling      0.465 (cached)
+  JPM_10Q_2026-08-06   naive        0.000 (cached)
+  JPM_10Q_2026-08-06   pylib        0.000 (cached)
+  JPM_10Q_2026-08-06   docling      0.449 (cached)
+  KO_10K_2026-02-20    naive        0.000 (cached)
+  KO_10K_2026-02-20    pylib        0.000 (cached)
+  KO_10K_2026-02-20    docling      0.708 (cached)
+  KO_10Q_2026-04-30    naive        0.000 (cached)
+  KO_10Q_2026-04-30    pylib        0.000 (cached)
+  KO_10Q_2026-04-30    docling      0.696 (cached)
+  KO_10Q_2026-07-29    naive        0.000 (cached)
+  KO_10Q_2026-07-29    pylib        0.000 (cached)
+  KO_10Q_2026-07-29    docling      0.676 (cached)
+  MSFT_10K_2026-07-29  naive        0.000 (cached)
+  MSFT_10K_2026-07-29  pylib        0.000 (cached)
+  MSFT_10K_2026-07-29  docling      0.474 (cached)
+  MSFT_10Q_2026-01-28  naive        0.000 (cached)
+  MSFT_10Q_2026-01-28  pylib        0.000 (cached)
+  MSFT_10Q_2026-01-28  docling      0.483 (cached)
+  MSFT_10Q_2026-04-29  naive        0.000 (cached)
+  MSFT_10Q_2026-04-29  pylib        0.000 (cached)
+[32m[INFO] 2026-08-31 09:39:34,059 [RapidOCR] base.py:23: Using engine_name: torch[0m
+[32m[INFO] 2026-08-31 09:39:34,063 [RapidOCR] device_config.py:57: Using CPU device[0m
+[32m[INFO] 2026-08-31 09:39:34,132 [RapidOCR] download_file.py:60: File exists and is valid: /Users/nirzaree/Desktop/Masters /MS_Projects/docrouter/.venv/lib/python3.11/site-packages/rapidocr/models/PP-OCRv6_det_small.pth[0m
+[32m[INFO] 2026-08-31 09:39:34,133 [RapidOCR] main.py:50: Using /Users/nirzaree/Desktop/Masters /MS_Projects/docrouter/.venv/lib/python3.11/site-packages/rapidocr/models/PP-OCRv6_det_small.pth[0m
+[32m[INFO] 2026-08-31 09:39:34,262 [RapidOCR] base.py:23: Using engine_name: torch[0m
+[32m[INFO] 2026-08-31 09:39:34,263 [RapidOCR] device_config.py:57: Using CPU device[0m
+[32m[INFO] 2026-08-31 09:39:34,269 [RapidOCR] download_file.py:60: File exists and is valid: /Users/nirzaree/Desktop/Masters /MS_Projects/docrouter/.venv/lib/python3.11/site-packages/rapidocr/models/ch_ptocr_mobile_v2.0_cls_mobile.pth[0m
+[32m[INFO] 2026-08-31 09:39:34,269 [RapidOCR] main.py:50: Using /Users/nirzaree/Desktop/Masters /MS_Projects/docrouter/.venv/lib/python3.11/site-packages/rapidocr/models/ch_ptocr_mobile_v2.0_cls_mobile.pth[0m
+[32m[INFO] 2026-08-31 09:39:34,314 [RapidOCR] base.py:23: Using engine_name: torch[0m
+[32m[INFO] 2026-08-31 09:39:34,314 [RapidOCR] device_config.py:57: Using CPU device[0m
+[32m[INFO] 2026-08-31 09:39:34,401 [RapidOCR] download_file.py:60: File exists and is valid: /Users/nirzaree/Desktop/Masters /MS_Projects/docrouter/.venv/lib/python3.11/site-packages/rapidocr/models/PP-OCRv6_rec_small.pth[0m
+[32m[INFO] 2026-08-31 09:39:34,401 [RapidOCR] main.py:50: Using /Users/nirzaree/Desktop/Masters /MS_Projects/docrouter/.venv/lib/python3.11/site-packages/rapidocr/models/PP-OCRv6_rec_small.pth[0m
+Loading weights:   0%|          | 0/770 [00:00<?, ?it/s]Loading weights: 100%|██████████| 770/770 [00:00<00:00, 8420.45it/s]
+/Users/nirzaree/Desktop/Masters /MS_Projects/docrouter/.venv/lib/python3.11/site-packages/torch/nn/modules/conv.py:560: UserWarning: Using padding='same' with even kernel lengths and odd dilation may require a zero-padded copy of the input be created (Triggered internally at /Users/runner/work/pytorch/pytorch/aten/src/ATen/native/Convolution.cpp:1102.)
+  return F.conv2d(
+[33m[WARNING] 2026-08-31 09:40:18,901 [RapidOCR] main.py:132: The text detection result is empty[0m
+RapidOCR returned empty result!
+[33m[WARNING] 2026-08-31 09:40:22,770 [RapidOCR] main.py:132: The text detection result is empty[0m
+RapidOCR returned empty result!
+[33m[WARNING] 2026-08-31 09:40:34,131 [RapidOCR] main.py:132: The text detection result is empty[0m
+RapidOCR returned empty result!
+[33m[WARNING] 2026-08-31 09:40:39,504 [RapidOCR] main.py:132: The text detection result is empty[0m
+RapidOCR returned empty result!
+[33m[WARNING] 2026-08-31 09:41:09,046 [RapidOCR] main.py:132: The text detection result is empty[0m
+RapidOCR returned empty result!

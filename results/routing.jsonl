@@ -1,0 +1,5 @@
+{"policy": "always(docling)", "n": 17, "mean_quality": 0.6013340869370282, "total_seconds": 42559.98428987604, "seconds_per_doc": 2503.5284876397673, "total_cost_usd": 0.0, "routing_overhead_s": 2.734265831997618, "chose_docling": 17}
+{"policy": "always(naive)", "n": 17, "mean_quality": 0.07773245436771246, "total_seconds": 51.72062862399616, "seconds_per_doc": 3.0423899190585977, "total_cost_usd": 0.0, "routing_overhead_s": 2.734265831997618, "chose_naive": 17}
+{"policy": "always(pylib)", "n": 17, "mean_quality": 0.11766525009992192, "total_seconds": 14.796397165977396, "seconds_per_doc": 0.8703763038810233, "total_cost_usd": 0.0, "routing_overhead_s": 2.734265831997618, "chose_pylib": 17}
+{"policy": "rules(text_layer)", "n": 17, "mean_quality": 0.599878902136112, "total_seconds": 40598.46158658501, "seconds_per_doc": 2388.144799210883, "total_cost_usd": 0.0, "routing_overhead_s": 2.734265831997618, "chose_docling": 14, "chose_pylib": 3}
+{"policy": "oracle", "n": 17, "mean_quality": 0.6013340869370282, "total_seconds": 42559.98428987604, "seconds_per_doc": 2503.5284876397673, "total_cost_usd": 0.0, "routing_overhead_s": 0.0, "chose_docling": 17}

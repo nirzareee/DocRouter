@@ -19,6 +19,7 @@ from .evaluate import evaluate
 from .features import extract_corpus_features
 from .router import (
     always,
+    complete_documents,
     evaluate_oracle,
     evaluate_policy,
     format_comparison,
@@ -82,7 +83,20 @@ def cmd_route(args: argparse.Namespace) -> int:
     features = load_features(*args.features)
 
     backends = sorted({b for _, b in results})
+    n_all = len(features)
+
+    if args.complete_only:
+        features = complete_documents(features, results, backends)
+        dropped = n_all - len(features)
+        if dropped:
+            print(f"Restricted to {len(features)} of {n_all} documents scored by "
+                  f"every backend ({dropped} incomplete, excluded).")
     print(f"{len(features)} documents, backends: {', '.join(backends)}\n")
+
+    if not features:
+        print("No document has results from every backend. "
+              "Finish the sweep, or pass fewer backends.")
+        return 1
 
     evaluated = [
         evaluate_policy(always(b), features, results, name=f"always({b})")
@@ -149,8 +163,12 @@ def cmd_bench(args: argparse.Namespace) -> int:
     if args.clear_cache:
         print(f"Cleared {cache.clear()} cache entries\n")
 
-    run = evaluate(corpus, backends, verbose=not args.quiet, cache=cache)
-    out = run.write_jsonl(args.out)
+    # Stream rows to disk as they are produced so a crash mid-sweep keeps
+    # everything scored so far.
+    run = evaluate(
+        corpus, backends, verbose=not args.quiet, cache=cache, out_path=args.out
+    )
+    out = Path(args.out)
 
     print(f"\n{run.format_table()}")
     if not args.no_cache:
@@ -188,6 +206,8 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--expensive", default="docling",
                    help="backend for documents without one")
     p.add_argument("--out", default="results/routing.jsonl")
+    p.add_argument("--complete-only", action="store_true",
+                   help="evaluate only documents scored by every backend")
     p.set_defaults(func=cmd_route)
 
     p = sub.add_parser("bench", help="run the benchmark over a corpus")

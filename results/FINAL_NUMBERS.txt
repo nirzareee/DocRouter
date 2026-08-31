@@ -1,0 +1,43 @@
+==============================================================================
+HEADLINE: extraction quality by backend and condition
+==============================================================================
+| backend | arm      | n  | text_sim | TEDS  | read_order | overall | sec/doc |
+| ------- | -------- | -- | -------- | ----- | ---------- | ------- | ------- |
+| naive   | clean    | 28 | 0.687    | 0.000 | 0.555      | 0.414   | 13.4    |
+| naive   | degraded | 28 | 0.000    | 0.000 | 0.000      | 0.000   | 0.1     |
+| pylib   | clean    | 28 | 0.653    | 0.356 | 0.703      | 0.571   | 12.5    |
+| pylib   | degraded | 28 | 0.000    | 0.000 | 0.000      | 0.000   | 0.1     |
+| docling | clean    | 3  | 0.748    | 0.515 | 0.762      | 0.675   | 658.5   |
+| docling | degraded | 14 | 0.633    | 0.475 | 0.649      | 0.586   | 2898.9  |
+
+Sample sizes differ: the Docling sweeps were truncated by compute
+limits. Each row reports its own n.
+
+==============================================================================
+F1: pure-Python extraction on scanned documents
+==============================================================================
+  56 (document, backend) pairs
+  scoring above 0.000: 0
+  max score observed:  0.0000
+
+==============================================================================
+F2: what Docling buys on CLEAN filings
+==============================================================================
+  pylib  docling    gain  slowdown  doc
+  0.681    0.694  +0.013      178x  AAPL_10Q_2026-01-30
+  0.656    0.665  +0.010      111x  AAPL_10Q_2026-07-31
+  0.664    0.665  +0.002      169x  AAPL_10Q_2026-05-01
+
+  mean gain:     +0.008
+  mean slowdown: 153x
+  n = 3 documents
+
+==============================================================================
+F3: routing arithmetic on matched pairs
+==============================================================================
+  matched documents: 3 (6 document-conditions)
+  always(docling):   quality 0.665  time     2744s
+  rules router:      quality 0.661  time      782s
+  always(pylib):     quality 0.333  time       14s
+
+  router keeps 99.4% of always-docling quality at 28.5% of its compute

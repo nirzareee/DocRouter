@@ -79,6 +79,30 @@ def load_results(*paths: str | Path) -> dict[tuple[str, str], dict[str, Any]]:
     return out
 
 
+def complete_documents(
+    features: dict[str, dict[str, Any]],
+    results: dict[tuple[str, str], dict[str, Any]],
+    backends: Iterable[str],
+) -> dict[str, dict[str, Any]]:
+    """Keep only documents scored by every backend.
+
+    A sweep interrupted partway leaves some documents with results from the
+    cheap backends but not the expensive one. Comparing policies across that
+    mixture is meaningless: always(pylib) would be scored on more documents
+    than always(docling), and the cheaper policy would look better purely
+    because it was measured on a different sample.
+
+    Filtering to the complete intersection is the only honest option short of
+    finishing the sweep. Report the resulting n, and say which documents were
+    dropped and why.
+    """
+    backends = list(backends)
+    return {
+        key: feat for key, feat in features.items()
+        if all((key, b) in results for b in backends)
+    }
+
+
 def load_features(*paths: str | Path) -> dict[str, dict[str, Any]]:
     """Index feature rows by doc_key."""
     out: dict[str, dict[str, Any]] = {}
