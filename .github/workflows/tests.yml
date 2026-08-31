@@ -31,4 +31,4 @@ jobs:
       - name: Benchmark runs end to end
         run: |
           python scripts/make_samples.py
-          python -m docrouter.cli bench data/sample_corpus --quiet
+          python -m docrouter.cli bench data/sample_corpus --no-cache --quiet

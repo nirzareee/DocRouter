@@ -181,5 +181,6 @@ def _run(
                 mark = " (cached)" if cached else ""
                 print(f"  {sample.doc_key:<20} {backend.name:<12} {status}{mark}",
                       flush=True)
+                print(f"  {sample.doc_key:<20} {backend.name:<12} {status}{mark}")
 
     return rows

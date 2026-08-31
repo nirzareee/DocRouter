@@ -169,6 +169,8 @@ def cmd_bench(args: argparse.Namespace) -> int:
         corpus, backends, verbose=not args.quiet, cache=cache, out_path=args.out
     )
     out = Path(args.out)
+    run = evaluate(corpus, backends, verbose=not args.quiet, cache=cache)
+    out = run.write_jsonl(args.out)
 
     print(f"\n{run.format_table()}")
     if not args.no_cache:
